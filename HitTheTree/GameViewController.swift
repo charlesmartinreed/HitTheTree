@@ -11,6 +11,8 @@ import SceneKit
 
 class GameViewController: UIViewController {
     
+    let CategoryTree = 2
+    
     //MARK:- Scene properties
     var sceneView: SCNView!
     var scene: SCNScene!
@@ -38,6 +40,8 @@ class GameViewController: UIViewController {
         scene = SCNScene(named: "art.scnassets/MainScene.scn")
         sceneView.scene = scene
         
+        scene.physicsWorld.contactDelegate = self
+        
         // create tap recgonizer
         let tapRecognizer = UITapGestureRecognizer()
         tapRecognizer.numberOfTouchesRequired = 1
@@ -52,6 +56,7 @@ class GameViewController: UIViewController {
     func setupNodes() {
         // because recursive is true, it'll look through the file path tree to find our node
         ballNode = scene.rootNode.childNode(withName: "ball", recursively: true)!
+        ballNode.physicsBody?.contactTestBitMask = CategoryTree
         
         selfieStickNode = scene.rootNode.childNode(withName: "selfieStick", recursively: true)!
     }
@@ -122,10 +127,12 @@ class GameViewController: UIViewController {
 
 }
 
-//MARK:- Camera positioning method
+
 extension GameViewController: SCNSceneRendererDelegate {
+    // called every frame
     func renderer(_ renderer: SCNSceneRenderer, updateAtTime time: TimeInterval) {
-        // call every frame
+        
+        //MARK:- Camera positioning method
         
         // get the ball position as it currently appears on scene during the frame
         let ball = ballNode.presentation
@@ -143,5 +150,48 @@ extension GameViewController: SCNSceneRendererDelegate {
         
         cameraPosition = SCNVector3(xComponent, yComponent, zComponent)
         selfieStickNode.position = cameraPosition
+        
+        //MARK:- Motion event handling
+        motion.getAccelerometerData { (x, y, z) in
+            // uses helper function to creation this motionforce. It'll be used to change the direction of the ballNode, proportionally.
+            self.motionForce = SCNVector3(x * 0.05, 0, (y + 0.8) * -0.05)
+        }
+        
+        ballNode.physicsBody?.velocity += motionForce
+        
+        //MARK:- Collision detection
+        // what happens when the ball hits the tree?
+        // 2 for contact bitmaask so that we're notified of contact between the two objects
+        
+    }
+
+}
+
+extension GameViewController : SCNPhysicsContactDelegate {
+    func physicsWorld(_ world: SCNPhysicsWorld, didBegin contact: SCNPhysicsContact) {
+        //notifies us each time a contact is established
+        var contactNode: SCNNode!
+        
+        // if the first node is ball, node B must be the tree. Else, node A must the tree.
+        if contact.nodeA.name == "ball" {
+            contactNode = contact.nodeB
+        } else {
+            contactNode = contact.nodeA
+        }
+        
+        if contactNode.physicsBody?.categoryBitMask == CategoryTree {
+            // play sound, remove it and show it again after period of time
+            contactNode.isHidden = true
+            let sawSound = sounds["saw"]!
+            ballNode.runAction(SCNAction.playAudio(sawSound, waitForCompletion: false))
+            
+            let waitAction = SCNAction.wait(duration: 15)
+            let unhideAction = SCNAction.run { (node) in
+                node.isHidden = false
+            }
+            
+            let actionSequence = SCNAction.sequence([waitAction, unhideAction])
+            contactNode.runAction(actionSequence)
+        }
     }
 }
