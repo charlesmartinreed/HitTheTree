@@ -32,7 +32,9 @@ class GameViewController: UIViewController {
     func setupScene() {
         // get the view
         sceneView = self.view as? SCNView
-        sceneView.allowsCameraControl = true //since we didn't allow any logic for camera control, this allows us to do it manually
+        sceneView.delegate = self
+        
+        // sceneView.allowsCameraControl = true
         scene = SCNScene(named: "art.scnassets/MainScene.scn")
         sceneView.scene = scene
         
@@ -118,4 +120,28 @@ class GameViewController: UIViewController {
         // Release any cached data, images, etc that aren't in use.
     }
 
+}
+
+//MARK:- Camera positioning method
+extension GameViewController: SCNSceneRendererDelegate {
+    func renderer(_ renderer: SCNSceneRenderer, updateAtTime time: TimeInterval) {
+        // call every frame
+        
+        // get the ball position as it currently appears on scene during the frame
+        let ball = ballNode.presentation
+        let ballPosition = ball.position
+        
+        // target position for the camera to have - move from initial position to target
+        let targetPosition = SCNVector3(ballPosition.x, ballPosition.y + 5, ballPosition.z + 5)
+        var cameraPosition = selfieStickNode.position
+        
+        // we're using damping to more smoothly move the camera between points
+        let camDamping: Float = 0.3
+        let xComponent = cameraPosition.x * (1 - camDamping) + targetPosition.x * camDamping
+        let yComponent = cameraPosition.y * (1 - camDamping) + targetPosition.y * camDamping
+        let zComponent = cameraPosition.z * (1 - camDamping) + targetPosition.z * camDamping
+        
+        cameraPosition = SCNVector3(xComponent, yComponent, zComponent)
+        selfieStickNode.position = cameraPosition
+    }
 }
