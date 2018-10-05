@@ -36,6 +36,14 @@ class GameViewController: UIViewController {
         scene = SCNScene(named: "art.scnassets/MainScene.scn")
         sceneView.scene = scene
         
+        // create tap recgonizer
+        let tapRecognizer = UITapGestureRecognizer()
+        tapRecognizer.numberOfTouchesRequired = 1
+        tapRecognizer.numberOfTapsRequired = 1
+        
+        tapRecognizer.addTarget(self, action: #selector(sceneViewTapped(recognizer:)))
+        sceneView.addGestureRecognizer(tapRecognizer)
+        
     }
     
     //MARK:- Node setup
@@ -73,7 +81,7 @@ class GameViewController: UIViewController {
     }
     
     //MARK:- Tap gesture recognizer
-    func sceneViewTapper(recognizer: UITapGestureRecognizer) {
+    @objc func sceneViewTapped(recognizer: UITapGestureRecognizer) {
         // 1. Grab the touch point's location
         let location = recognizer.location(in: sceneView)
         
